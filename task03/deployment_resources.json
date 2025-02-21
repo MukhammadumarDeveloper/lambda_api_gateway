@@ -37,8 +37,20 @@
   "task3_api": {
     "resource_type": "api_gateway",
     "deploy_stage": "api",
-    "dependencies": [],
-    "resources": {},
+    "dependencies": [
+      {
+        "resource_name": "hello_world",
+        "resource_type": "lambda"
+      }
+    ],
+    "resources": {
+      "/hello": {
+        "get": {
+          "lambda_function": "hello_world",
+          "authorization_type": "NONE"
+        }
+      }
+    },
     "tags": {}
   }
 }
