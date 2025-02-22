@@ -17,23 +17,11 @@ import java.util.Map;
 )
 public class HelloWorld implements RequestHandler<Object, Map<String, Object>> {
 
-	// public Map<String, Object> handleRequest(Object request, Context context) {
-	// 	System.out.println("Hello from lambda");
-	// 	Map<String, Object> resultMap = new HashMap<String, Object>();
-	// 	resultMap.put("statusCode", 200);
-	// 	resultMap.put("body", "Hello from Lambda");
-	// 	return resultMap;
-	// }
-
-	@Override
-	public Map<String, Object> handleRequest(Object input, Context context) {
-		Map<String, Object> response = new HashMap<>();
-		response.put("statusCode", 200);
-		response.put("message", "Hello from Lambda");
-		return response;
+	public Map<String, Object> handleRequest(Object request, Context context) {
+		System.out.println("Hello from lambda");
+		Map<String, Object> resultMap = new HashMap<String, Object>();
+		resultMap.put("statusCode", 200);
+		resultMap.put("message", "Hello from Lambda");
+		return resultMap;
 	}
-//	@Override
-//    public ApiGatewayResponse handleRequest(Object input, Context context) {
-//        return new ApiGatewayResponse(200, "Hello from Lambda");
-//    }
 }
