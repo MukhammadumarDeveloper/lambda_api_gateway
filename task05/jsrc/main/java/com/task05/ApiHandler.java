@@ -1,6 +1,5 @@
 package com.task05;
 
-
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 //import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -34,9 +33,11 @@ import com.syndicate.deployment.model.RetentionSetting;
 	logsExpiration = RetentionSetting.SYNDICATE_ALIASES_SPECIFIED
 )
 @EnvironmentVariables(value = {
-	@EnvironmentVariable(key = "region", value = "${region}"),
-	@EnvironmentVariable(key = "target_table", value = "${target_table}")
+		@EnvironmentVariable(key = "region", value = "${region}"),
+		@EnvironmentVariable(key = "target_table", value = "${target_table}")
 })
+//public class ApiHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
+//public class ApiHandler implements RequestHandler<Request, APIGatewayV2HTTPResponse> {
 public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
 	private static final DynamoDbClient dynamoDb = DynamoDbClient.builder()
