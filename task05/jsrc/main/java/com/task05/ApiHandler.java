@@ -47,51 +47,55 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 
 //	public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent request, Context context) {
 //	public APIGatewayV2HTTPResponse handleRequest(Request request, Context context) {
-	public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent request, Context context) {
-		try {
-			context.getLogger().log("Events table: " + System.getenv("target_table"));
-			context.getLogger().log("Full request: " + request.toString());
-			context.getLogger().log("Request body: " + request.getBody());
-//			Request inputBody = objectMapper.readValue(request.getBody(), Request.class);
-//			Request inputBody = request;
-			Request inputBody = objectMapper.readValue(request.getBody(), Request.class);
-			Integer principalId = inputBody.getPrincipalId();
-			context.getLogger().log("Request principalId: " + principalId);
-			Map<String, String> content = inputBody.getContent();
-			context.getLogger().log("Request content: " + content);
+public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent request, Context context) {
+	try {
+		context.getLogger().log("Events table: " + System.getenv("target_table"));
+		context.getLogger().log("Full request: " + request.toString());
+		context.getLogger().log("Request body: " + request.getBody());
 
-			String uuid = UUID.randomUUID().toString();
-			String createdAt = DateTimeFormatter.ISO_INSTANT.format(ZonedDateTime.now());
+		// Parse the request body
+		Request inputBody = objectMapper.readValue(request.getBody(), Request.class);
+		Integer principalId = inputBody.getPrincipalId();
+		Map<String, String> content = inputBody.getContent();
 
-			Map<String, AttributeValue> event = new HashMap<>();
-			event.put("id", AttributeValue.builder().s(uuid).build());
-			event.put("principalId", AttributeValue.builder().n(String.valueOf(principalId)).build());
-			event.put("createdAt", AttributeValue.builder().s(createdAt).build());
-			event.put("body", AttributeValue.builder().m(mapStringToAttributeValue(content)).build());
+		// Generate UUID and timestamp
+		String uuid = UUID.randomUUID().toString();
+		String createdAt = DateTimeFormatter.ISO_INSTANT.format(ZonedDateTime.now());
 
-			PutItemRequest putItemRequest = PutItemRequest.builder()
-					.tableName(System.getenv("target_table"))
-					.item(event)
-					.build();
-			dynamoDb.putItem(putItemRequest);
+		// Prepare DynamoDB item
+		Map<String, AttributeValue> event = new HashMap<>();
+		event.put("id", AttributeValue.builder().s(uuid).build());
+		event.put("principalId", AttributeValue.builder().n(String.valueOf(principalId)).build());
+		event.put("createdAt", AttributeValue.builder().s(createdAt).build());
+		event.put("body", AttributeValue.builder().m(mapStringToAttributeValue(content)).build());
 
-			Map<String, Object> responseBody = new HashMap<>();
-			responseBody.put("id", uuid);
-			responseBody.put("principalId", principalId);
-			responseBody.put("createdAt", createdAt);
-			responseBody.put("body", content);
+		// Save to DynamoDB
+		PutItemRequest putItemRequest = PutItemRequest.builder()
+				.tableName(System.getenv("target_table"))
+				.item(event)
+				.build();
+		dynamoDb.putItem(putItemRequest);
 
-			APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
-			response.setStatusCode(201);
-			response.setBody(objectMapper.writeValueAsString(responseBody));
-			return response;
-		} catch (Exception e) {
-			context.getLogger().log("Error: " + e.getMessage());
-			APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
-			response.setStatusCode(500);
-			return response;
-		}
+		// Prepare response
+		Map<String, Object> responseBody = new HashMap<>();
+		responseBody.put("id", uuid);
+		responseBody.put("principalId", principalId);
+		responseBody.put("createdAt", createdAt);
+		responseBody.put("body", content);
+
+		APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
+		response.setStatusCode(201);
+		response.setBody(objectMapper.writeValueAsString(responseBody));
+		return response;
+	} catch (Exception e) {
+		context.getLogger().log("Error: " + e.getMessage());
+		e.printStackTrace();
+		APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
+		response.setStatusCode(500);
+		response.setBody("{\"error\": \"" + e.getMessage() + "\"}");
+		return response;
 	}
+}
 
 	private static Map<String, AttributeValue> mapStringToAttributeValue(Map<String, String> map) {
 		Map<String, AttributeValue> attributeValueMap = new HashMap<>();
