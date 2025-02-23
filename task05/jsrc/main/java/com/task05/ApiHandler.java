@@ -22,6 +22,7 @@ import java.util.UUID;
 @LambdaHandler(
 		lambdaName = "api_handler",
 		roleName = "api_handler-role",
+		aliasName = "${lambdas_alias_name}",
 		isPublishVersion = false,
 		logsExpiration = RetentionSetting.SYNDICATE_ALIASES_SPECIFIED
 )
@@ -42,7 +43,7 @@ public class ApiHandler implements RequestHandler<Map<String, Object>, Map<Strin
 
 	public ApiHandler() {
 		this.dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.defaultClient());
-		this.table = dynamoDB.getTable("cmtr-7eb391ed-Events-test");
+		this.table = dynamoDB.getTable(System.getenv("table")); // Use environment variable
 		this.objectMapper = new ObjectMapper();
 	}
 
@@ -56,6 +57,7 @@ public class ApiHandler implements RequestHandler<Map<String, Object>, Map<Strin
 			String id = UUID.randomUUID().toString();
 			String createdAt = java.time.Instant.now().toString();
 
+			// Prepare DynamoDB item
 			Item item = new Item()
 					.withPrimaryKey("id", id)
 					.withInt("principalId", principalId)
@@ -68,7 +70,12 @@ public class ApiHandler implements RequestHandler<Map<String, Object>, Map<Strin
 			// Prepare response
 			Map<String, Object> response = Map.of(
 					"statusCode", 201,
-					"event", item.asMap()
+					"event", Map.of(
+							"id", id,
+							"principalId", principalId,
+							"createdAt", createdAt,
+							"body", content
+					)
 			);
 
 			return response;
