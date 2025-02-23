@@ -1,43 +1,81 @@
 package com.task05;
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Item;
+import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.syndicate.deployment.annotations.environment.EnvironmentVariable;
+import com.syndicate.deployment.annotations.environment.EnvironmentVariables;
+import com.syndicate.deployment.annotations.events.DynamoDbTriggerEventSource;
 import com.syndicate.deployment.annotations.lambda.LambdaHandler;
+import com.syndicate.deployment.annotations.lambda.LambdaUrlConfig;
 import com.syndicate.deployment.model.RetentionSetting;
-import com.task05.api.ApiRequest;
-import com.task05.api.ApiResponse;
-import com.task05.dao.EventDao;
+import com.syndicate.deployment.model.lambda.url.AuthType;
+import com.syndicate.deployment.model.lambda.url.InvokeMode;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 
-@LambdaHandler(lambdaName = "api_handler",
+@LambdaHandler(
+		lambdaName = "api_handler",
 		roleName = "api_handler-role",
+		isPublishVersion = false,
 		logsExpiration = RetentionSetting.SYNDICATE_ALIASES_SPECIFIED
 )
-public class ApiHandler implements RequestHandler<ApiRequest, Map<String, Object>> {
+@LambdaUrlConfig(
+		authType = AuthType.NONE,
+		invokeMode = InvokeMode.BUFFERED
+)
+@EnvironmentVariables(value = {
+		@EnvironmentVariable(key = "region", value = "${region}"),
+		@EnvironmentVariable(key = "table", value = "${target_table}")
+}
+)
 
-	private static final String REGION = "eu-central-1";
+public class ApiHandler implements RequestHandler<Map<String, Object>, Map<String, Object>> {
+	private final DynamoDB dynamoDB;
+	private final Table table;
+	private final ObjectMapper objectMapper;
 
-	private static final EventDao eventDao = new EventDao(configureDynamoDB(), "cmtr-2258fa83-Events-test");
-
-	private static AmazonDynamoDB configureDynamoDB() {
-		return AmazonDynamoDBClientBuilder.standard()
-				.withRegion(REGION)
-				.build();
+	public ApiHandler() {
+		this.dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.defaultClient());
+		this.table = dynamoDB.getTable("cmtr-7eb391ed-Events-test");
+		this.objectMapper = new ObjectMapper();
 	}
 
-	public Map<String, Object> handleRequest(ApiRequest request, Context context) {
-		System.out.println("Received request: " + request);
+	public Map<String, Object> handleRequest(Map<String, Object> input, Context context) {
+		try {
+			// Extract request data
+			int principalId = (int) input.get("principalId");
+			Map<String, String> content = (Map<String, String>) input.get("content");
 
-		ApiResponse response = eventDao.save(request);
+			// Create event data
+			String id = UUID.randomUUID().toString();
+			String createdAt = java.time.Instant.now().toString();
 
-		Map<String, Object> resultMap = new LinkedHashMap<>();
-		resultMap.put("statusCode", 201);
-		resultMap.put("event", response);
+			Item item = new Item()
+					.withPrimaryKey("id", id)
+					.withInt("principalId", principalId)
+					.withString("createdAt", createdAt)
+					.withMap("body", content);
 
-		return resultMap;
+			// Save to DynamoDB
+			table.putItem(item);
+
+			// Prepare response
+			Map<String, Object> response = Map.of(
+					"statusCode", 201,
+					"event", item.asMap()
+			);
+
+			return response;
+
+		} catch (Exception e) {
+			context.getLogger().log("Error: " + e.getMessage());
+			return Map.of("statusCode", 500, "error", e.getMessage());
+		}
 	}
 }
