@@ -13,24 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.task10.dto;
+package com.task12.dto;
 
-import org.json.JSONObject;
 
-public record SignIn(String email, String password) {
-
-    public SignIn {
-        if (email == null || password == null) {
-            throw new IllegalArgumentException("Missing or incomplete data.");
-        }
-    }
-
-    public static SignIn fromJson(String jsonString) {
-        JSONObject json = new JSONObject(jsonString);
-        String email = json.optString("email", null);
-        String password = json.optString("password", null);
-
-        return new SignIn(email, password);
-    }
+public record RouteKey(String method, String path) {
 
 }

@@ -1,19 +1,20 @@
-package com.task10.handler;
+package com.task12.handler;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.task10.dto.Table;
-import org.json.JSONObject;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.task12.dto.Reservation;
+import com.task12.dto.Reservations;
+import lombok.SneakyThrows;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 
-
-public class PostTableHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+public class GetReservationsHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
     // Create a DynamoDbClient
     private final DynamoDbClient dbClient = DynamoDbClient.builder()
@@ -25,19 +26,21 @@ public class PostTableHandler implements RequestHandler<APIGatewayProxyRequestEv
             .dynamoDbClient(dbClient)
             .build();
 
-    private final DynamoDbTable<Table> table = enhancedClient.table(System.getenv("tables_table"), TableSchema.fromBean(Table.class));
+    private final DynamoDbTable<Reservation> reservation = enhancedClient.table(System.getenv("reservations_table"), TableSchema.fromBean(Reservation.class));
 
-    @Override
+    @SneakyThrows
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent requestEvent, Context context) {
-        context.getLogger().log("Table info: " + requestEvent.getBody());
-        Table newTable = Table.fromJson(requestEvent.getBody());
-        context.getLogger().log("Parsed Table info: " + newTable);
-        table.putItem(newTable);
+        context.getLogger().log("Reservations request: list all reservations");
+        Reservations reservations = new Reservations();
+        reservation.scan()
+                        .items()
+                .forEach(reservations::addReservation);
+        context.getLogger().log("Return Reservations info: " + reservations);
+        ObjectMapper mapper = new ObjectMapper();
+
         return new APIGatewayProxyResponseEvent()
                 .withStatusCode(200)
-                .withBody(new JSONObject()
-                        .put("id", newTable.getId())
-                        .toString()
-                );
+                .withBody(mapper.writeValueAsString(reservations));
     }
+
 }

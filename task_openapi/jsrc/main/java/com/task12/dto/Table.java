@@ -1,4 +1,4 @@
-package com.task10.dto;
+package com.task12.dto;
 
 import lombok.Data;
 import org.json.JSONException;

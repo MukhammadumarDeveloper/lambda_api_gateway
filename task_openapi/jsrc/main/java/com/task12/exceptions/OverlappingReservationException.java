@@ -1,4 +1,4 @@
-package com.task10.exceptions;
+package com.task12.exceptions;
 
 public class OverlappingReservationException extends RuntimeException {
 
